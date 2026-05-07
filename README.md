@@ -1,102 +1,76 @@
+# Char-only TextCNN Weibo Emotion Classification
 
-# Multi-Granularity TextCNN for Chinese Emotion Classification
+This project trains a final character-level TextCNN for the simplifyweibo four-class emotion dataset.
 
-This project implements a Chinese emotion classification model based on a multi-granularity TextCNN architecture.
+Label mapping:
 
-The model classifies Chinese text into four emotion categories:
+- `0`: 喜悦
+- `1`: 愤怒
+- `2`: 厌恶
+- `3`: 低落
 
-- Happy
-- Anger
-- Sadness
-- Neutral
-
-## Project Structure
+The previous three-way tokenizer and gated fusion experiments are retired. Ablation showed the `char_only` model was the best final choice, so the production training path is:
 
 ```text
-.
-├── main.py                 # Entry point
-├── config.py               # Hyperparameters and paths
-├── tokenizer.py            # Char / word / phrase tokenization
-├── data_utils.py           # Dataset, vocabulary, dataloader
-├── model.py                # CNNBranch and MultiViewEmotionCNN
-├── train.py                # Training loop
-├── evaluate.py             # Evaluation, report, confusion matrix
-├── predict.py              # Single-text prediction
-├── utils.py                # Utility functions
-├── evaluation_report.txt   # Test results
-├── test_confusion_matrix.png
-├── training_overview.png
-└── README.md
-Model Design
+text -> char_tokenize -> char_vocab -> encode_text -> TextCNN -> class logits
+```
 
-The model uses three parallel text representation branches:
-char-level input   → Embedding → CNN → char feature
-word-level input   → Embedding → CNN → word feature
-phrase-level input → Embedding → CNN → phrase feature
+## Ablation Results
 
-The three features are fused and passed into an MLP classifier.
+The final project keeps only the `char_only` TextCNN because it achieved the best accuracy and tied for the best Macro-F1 in the ablation experiments.
 
-The motivation is to combine:
+| Model | Acc | Macro-F1 |
+| --- | ---: | ---: |
+| `char_only` | 0.4616 | 0.3742 |
+| `word_only` | 0.4569 | 0.3742 |
+| `phrase_only` | 0.4421 | 0.3581 |
+| `char_word_concat` | 0.4578 | 0.3719 |
+| `char_word_phrase_concat` | 0.4503 | 0.3584 |
+| `char_word_phrase_gated` | 0.4571 | 0.3636 |
 
-Character-level fine-grained Chinese patterns
-Word-level semantic information
-Phrase-level emotion expressions such as negation, degree words, and sentiment phrases
-Main Features
-Multi-granularity tokenization
-Three independent CNN branches
-Feature-level fusion
-AdamW optimizer
-ReduceLROnPlateau learning-rate scheduler
-Gradient clipping
-Confusion matrix visualization
-Macro precision / recall / F1 evaluation
-Misclassified sample analysis
-Test Results
+## Data
 
-Current test result:
+Expected split files:
 
-loss=0.0028
-accuracy=1.0000
-macro_precision=1.0000
-macro_recall=1.0000
-macro_f1=1.0000
+```text
+data/weibo_train.csv
+data/weibo_val.csv
+data/weibo_test.csv
+```
 
-Per-class result:
+Each CSV must contain:
 
-Class ID	Label	Precision	Recall	F1
-0	Happy	1.0000	1.0000	1.0000
-1	Anger	1.0000	1.0000	1.0000
-2	Sadness	1.0000	1.0000	1.0000
-3	Neutral	1.0000	1.0000	1.0000
+```text
+text,label
+```
 
-Note: The current result is based on the current test split. Further evaluation on larger and harder datasets is needed to verify generalization.
+## Train
 
-How to Run
+Run:
 
-Install dependencies:
+```powershell
+python .\main.py
+```
 
-pip install -r requirements.txt
+By default `USE_CLASS_WEIGHT = True` in `config.py`, so training runs the
+`char_only + class_weight` experiment. Set it to `False` to run the original
+char-only baseline.
 
-Run the full training and evaluation pipeline:
+Training outputs are saved under `output/`:
 
-python main.py
-Prediction Examples
+```text
+output/best_char_textcnn.pt
+output/best_char_textcnn_weighted.pt
+output/char_vocab.json
+output/label_map.json
+output/test_metrics.json
+output/test_metrics_weighted.json
+output/error_samples.csv
+output/class_distribution_report.json
+output/low_missed_errors.csv
+output/predicted_low_samples.csv
+output/training_history.png
+output/confusion_matrix.png
+```
 
-Example inputs:
-
-这个电影不是很好，我有点失望
-今天收到礼物，真的非常开心
-快递状态更新为正在派送
-
-The prediction logic is implemented in:
-
-predict.py
-Git Ignore
-
-The repository ignores:
-
-Python cache files
-Virtual environments
-IDE settings
-Model weight files
-Temporary files
+After training, the script can also predict a user-entered Chinese sentence.

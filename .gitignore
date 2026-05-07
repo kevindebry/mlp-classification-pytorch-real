@@ -29,3 +29,5 @@ Thumbs.db
 # Temporary outputs
 tmp/
 temp/
+output/
+data/raw/
