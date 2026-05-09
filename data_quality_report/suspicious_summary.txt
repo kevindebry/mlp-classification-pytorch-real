@@ -1,0 +1,11 @@
+====== Suspicious Dataset Summary ======
+most_common_text_length_ratio: 0.014070
+text_length_p95_minus_p05: 157.00
+class_max_min_ratio: 2.376313
+top_repeated_text_count: 0
+top_repeated_text_ratio: 0.000000
+
+====== Findings ======
+- 文本长度分布没有明显过度集中。
+- 类别数量没有呈现几乎完全一致的形态。
+- 未发现特别突出的高频重复文本。

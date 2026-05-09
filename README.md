@@ -1,6 +1,6 @@
-# Char-only TextCNN Weibo Emotion Classification
+# Multi-view TextCNN Weibo Emotion Classification
 
-This project trains a final character-level TextCNN for the simplifyweibo four-class emotion dataset.
+This project trains a three-way Chinese emotion classifier for the simplifyweibo four-class dataset.
 
 Label mapping:
 
@@ -9,24 +9,32 @@ Label mapping:
 - `2`: 厌恶
 - `3`: 低落
 
-The previous three-way tokenizer and gated fusion experiments are retired. Ablation showed the `char_only` model was the best final choice, so the production training path is:
+## Current Model
+
+The project uses the optimized three-way tokenizer/model pipeline:
 
 ```text
-text -> char_tokenize -> char_vocab -> encode_text -> TextCNN -> class logits
+text
+├─ char_tokenize   -> char_vocab   -> char CNN branch
+├─ word_tokenize   -> word_vocab   -> word CNN branch
+└─ phrase_tokenize -> phrase_vocab -> phrase CNN branch
+
+char + word + phrase -> gated fusion -> classifier
 ```
 
-## Ablation Results
+Speed-related pieces:
 
-The final project keeps only the `char_only` TextCNN because it achieved the best accuracy and tied for the best Macro-F1 in the ablation experiments.
+- Trie longest-match tokenizer for word and phrase views
+- JSON tokenized cache under `cache/`
+- NumPy encoded-id cache under `cache/`
+- encoded-id Dataset for all epochs
+- `pin_memory` when CUDA is available
+- non-blocking tensor transfer
+- `torch.inference_mode()` during evaluation
+- best-model checkpointing by validation Macro-F1
+- optional class-weighted CrossEntropyLoss
 
-| Model | Acc | Macro-F1 |
-| --- | ---: | ---: |
-| `char_only` | 0.4616 | 0.3742 |
-| `word_only` | 0.4569 | 0.3742 |
-| `phrase_only` | 0.4421 | 0.3581 |
-| `char_word_concat` | 0.4578 | 0.3719 |
-| `char_word_phrase_concat` | 0.4503 | 0.3584 |
-| `char_word_phrase_gated` | 0.4571 | 0.3636 |
+`EPOCHS = 50`, `PATIENCE = 6`, and `SAVE_METRIC = "val_macro_f1"` in `config.py`.
 
 ## Data
 
@@ -44,6 +52,21 @@ Each CSV must contain:
 text,label
 ```
 
+If starting from raw simplifyweibo txt files, place them under:
+
+```text
+data/raw/0_simplifyweibo.txt
+data/raw/1_simplifyweibo.txt
+data/raw/2_simplifyweibo.txt
+data/raw/3_simplifyweibo.txt
+```
+
+Then run:
+
+```powershell
+python .\prepare_weibo_txt_dataset.py
+```
+
 ## Train
 
 Run:
@@ -52,25 +75,30 @@ Run:
 python .\main.py
 ```
 
-By default `USE_CLASS_WEIGHT = True` in `config.py`, so training runs the
-`char_only + class_weight` experiment. Set it to `False` to run the original
-char-only baseline.
-
-Training outputs are saved under `output/`:
+Main outputs:
 
 ```text
-output/best_char_textcnn.pt
-output/best_char_textcnn_weighted.pt
-output/char_vocab.json
-output/label_map.json
-output/test_metrics.json
-output/test_metrics_weighted.json
-output/error_samples.csv
-output/class_distribution_report.json
-output/low_missed_errors.csv
-output/predicted_low_samples.csv
-output/training_history.png
-output/confusion_matrix.png
+output/best_three_branch_textcnn.pt
+output/test_metrics_three_branch.json
+output/training_history_three_branch.json
+output/class_distribution_report_three_branch.json
+output/confusion_matrix_three_branch.png
+output/error_samples_three_branch.csv
+output/low_missed_errors_three_branch.csv
+output/predicted_low_samples_three_branch.csv
+output/training_curves_three_branch.png
 ```
 
-After training, the script can also predict a user-entered Chinese sentence.
+## Ablation
+
+Run:
+
+```powershell
+python .\ablation.py
+```
+
+Results are saved to:
+
+```text
+ablation_results_weibo.csv
+```

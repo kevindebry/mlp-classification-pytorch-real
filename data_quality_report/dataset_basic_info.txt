@@ -1,0 +1,44 @@
+====== Dataset Basic Info ======
+total_samples: 156506
+text_field: text
+label_field: label
+class_count: 4
+
+====== Source Files ======
+train: path=data\weibo_train.csv | rows=125204 | encoding=utf-8-sig
+val: path=data\weibo_val.csv | rows=15650 | encoding=utf-8-sig
+test: path=data\weibo_test.csv | rows=15652 | encoding=utf-8-sig
+
+====== Split Counts ======
+train: 125204
+val: 15650
+test: 15652
+
+====== Columns / Dtype / Missing ======
+text: dtype=object | missing=0 | missing_ratio=0.000000
+label: dtype=int64 | missing=0 | missing_ratio=0.000000
+
+====== Label Counts ======
+喜悦: 50000 | ratio=0.319477
+厌恶: 44105 | ratio=0.281810
+愤怒: 41360 | ratio=0.264271
+低落: 21041 | ratio=0.134442
+
+====== Text Quality Summary ======
+empty_text_count: 0
+too_short_len_le_2_count: 12
+duplicate_text_rows: 0
+duplicate_text_ratio: 0.000000
+
+====== Per-Label Internal Duplicates ======
+低落: 0 / 21041 (0.000000)
+厌恶: 0 / 44105 (0.000000)
+喜悦: 0 / 50000 (0.000000)
+愤怒: 0 / 41360 (0.000000)
+
+====== Label Quality Summary ======
+class_count: 4
+max_class_to_min_class_ratio: 2.376313
+is_obviously_imbalanced: True
+conflicting_label_sample_count: 0
+conflicting_label_sample_ratio: 0.000000
