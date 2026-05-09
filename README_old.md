@@ -1,23 +1,37 @@
-# Chinese Weibo Emotion Classification with Multi-View TextCNN
+# Weibo Multi-View TextCNN Emotion Classification Lab
 
-> A complete NLP baseline project with multi-view TextCNN, ablation study, error analysis, and data quality audit.
+> Draft README v0.1
 
-## Project Highlights
+Recommended repository name:
 
-- raw Weibo text preprocessing
-- char / word / phrase multi-view tokenization
-- multi-branch TextCNN baseline
-- concat fusion and gated fusion comparison
-- ablation study across different model structures
-- confusion matrix and high-confidence error analysis
-- dataset quality audit and possible label-noise detection
-- caching and Trie-based tokenization for faster repeated experiments
+```text
+weibo-multiview-textcnn-emotion
+```
 
-This project is not designed to chase the highest possible accuracy. Instead, it focuses on building a complete and reproducible NLP classification workflow before moving to RNN, LSTM, Transformer, and pretrained Chinese language models.
+Suggested topic/theme:
+
+```text
+Chinese Weibo emotion classification with multi-view TextCNN, ablation study, error analysis, and data quality audit.
+```
+
+中文主题：
+
+```text
+微博四情绪分类实验：三路 TextCNN、消融实验、错误样本分析与数据质量审计
+```
 
 ## Project Overview
 
-This project is an experimental Chinese NLP baseline for the simplifyweibo four-mood dataset. It started from a simple TextCNN classifier and gradually developed into a full workflow covering data preparation, model training, evaluation, diagnosis, ablation, and data-quality inspection.
+This project is an experimental Chinese emotion classification pipeline for the simplifyweibo four-mood dataset. It started as a simple TextCNN classifier and gradually developed into a more complete experiment framework:
+
+1. raw simplifyweibo txt data preparation
+2. char / word / phrase three-view tokenization
+3. multi-branch TextCNN modeling
+4. gated fusion and concat fusion comparison
+5. long-epoch training with caching and progress logging
+6. ablation study across model structures
+7. test-set error analysis
+8. dataset quality audit
 
 The current task is a four-class Weibo emotion classification problem:
 
@@ -28,6 +42,8 @@ The current task is a four-class Weibo emotion classification problem:
 | 2 | 厌恶 |
 | 3 | 低落 |
 
+## Why This Project Exists
+
 The main goal is not only to train one classifier, but to understand the whole experimental process:
 
 - whether character-level, word-level, and phrase-level information help differently
@@ -37,112 +53,6 @@ The main goal is not only to train one classifier, but to understand the whole e
 - whether the dataset itself contains weak labels, suspicious samples, or possible label noise
 
 In short, this repository is closer to an emotion-classification experiment lab than a single training script.
-
-## Main Results
-
-Current three-branch gated TextCNN test result:
-
-| Metric | Value |
-| --- | ---: |
-| test loss | 1.4006 |
-| accuracy | 0.4079 |
-| macro precision | 0.4180 |
-| macro recall | 0.4074 |
-| macro F1 | 0.3978 |
-
-Per-class result:
-
-| Emotion | Precision | Recall | F1 | Support |
-| --- | ---: | ---: | ---: | ---: |
-| 喜悦 | 0.5531 | 0.4706 | 0.5085 | 5,000 |
-| 愤怒 | 0.4439 | 0.3327 | 0.3803 | 4,136 |
-| 厌恶 | 0.4809 | 0.3972 | 0.4351 | 4,411 |
-| 低落 | 0.1940 | 0.4290 | 0.2672 | 2,105 |
-
-Although the absolute performance is modest, the experiment provides a useful CNN-based baseline. The results show that TextCNN can capture some local emotional patterns, but it struggles with noisy labels, subtle emotional boundaries, sarcasm, and negative-emotion confusion.
-
-The `低落` class is the most difficult part of the current system. The model catches more low-mood samples after class weighting, but precision is weak, meaning many non-low samples are also predicted as `低落`.
-
-## Quick Start
-
-```bash
-python prepare_weibo_txt_dataset.py
-python main.py
-python ablation.py
-python data_quality_audit.py
-```
-
-For first-time users, it is recommended to read the outputs in the following order:
-
-1. `data_quality_report/dataset_basic_info.txt`
-2. `output/test_metrics_three_branch.json`
-3. `ablation_results_weibo.csv`
-4. `output/error_analysis.csv`
-5. `data_quality_report/possible_label_mismatch.csv`
-
-## Project Structure
-
-```text
-weibo-multiview-textcnn-emotion/
-├── data/
-│   ├── raw/
-│   ├── weibo_train.csv
-│   ├── weibo_val.csv
-│   └── weibo_test.csv
-├── cache/
-│   ├── tokenized_*.json
-│   └── encoded_*.npy
-├── output/
-│   ├── best_three_branch_textcnn.pt
-│   ├── test_metrics_three_branch.json
-│   ├── confusion_matrix_three_branch.png
-│   └── error_analysis.csv
-├── data_quality_report/
-├── prepare_weibo_txt_dataset.py
-├── config.py
-├── tokenizer.py
-├── data_utils.py
-├── model.py
-├── train.py
-├── evaluate.py
-├── predict.py
-├── main.py
-├── ablation.py
-├── data_quality_audit.py
-└── README.md
-```
-
-## Skills Demonstrated
-
-- Chinese text preprocessing with pandas
-- train / validation / test split construction
-- PyTorch model training and evaluation
-- multi-branch neural network design
-- tokenization and vocabulary construction
-- Trie-based longest-match optimization
-- caching for repeated experiments
-- ablation study design
-- confusion matrix and error analysis
-- dataset quality audit and weak-label inspection
-- reproducible experiment logging
-
-## Environment / Requirements
-
-Recommended environment:
-
-- Python >= 3.10
-- pandas
-- numpy
-- torch
-- scikit-learn
-- matplotlib
-- tqdm
-
-Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
 
 ## Dataset
 
@@ -197,7 +107,7 @@ The dataset is still imbalanced. The largest class is about `2.38x` the smallest
 
 ## Model Design
 
-The main diagnostic model used for detailed evaluation is a three-view gated TextCNN:
+The current main model is a three-view TextCNN:
 
 ```text
 text
@@ -209,8 +119,6 @@ char_feature + word_feature + phrase_feature
     -> gated fusion
     -> classifier
 ```
-
-This does not mean gated fusion is proven to be better. In the current ablation run, simple three-view concat achieves the highest Accuracy, while gated fusion only gives the best Macro-F1 by a very small margin. Therefore, gated fusion should be treated as an experimental design rather than a confirmed improvement.
 
 Each branch follows the same basic CNN pattern:
 
@@ -274,6 +182,29 @@ Current training settings:
 
 The final test evaluation always reloads the best validation Macro-F1 checkpoint. It does not simply use the last epoch.
 
+## Main Results
+
+Current three-branch gated TextCNN test result:
+
+| Metric | Value |
+| --- | ---: |
+| test loss | 1.4006 |
+| accuracy | 0.4079 |
+| macro precision | 0.4180 |
+| macro recall | 0.4074 |
+| macro F1 | 0.3978 |
+
+Per-class result:
+
+| Emotion | Precision | Recall | F1 | Support |
+| --- | ---: | ---: | ---: | ---: |
+| 喜悦 | 0.5531 | 0.4706 | 0.5085 | 5,000 |
+| 愤怒 | 0.4439 | 0.3327 | 0.3803 | 4,136 |
+| 厌恶 | 0.4809 | 0.3972 | 0.4351 | 4,411 |
+| 低落 | 0.1940 | 0.4290 | 0.2672 | 2,105 |
+
+The `低落` class is the most difficult part of the current system. The model catches more low-mood samples after class weighting, but precision is weak, meaning many non-low samples are also predicted as `低落`.
+
 ## Ablation Study
 
 Run:
@@ -302,10 +233,8 @@ Current ablation result:
 Interpretation:
 
 - phrase-only is not enough by itself.
-- simple three-view concat achieves the best accuracy in the current run.
-- gated fusion gives the best Macro-F1 by a very small margin.
-- the gated model is not decisively better than concat.
-- therefore, gated fusion should be treated as an experimental design rather than a proven improvement.
+- simple three-view concat gives the best accuracy in the current run.
+- gated fusion gives the best Macro-F1 by a very small margin, but the gain is not decisive.
 - char/word/phrase views appear useful together, but fusion strategy still needs more tuning.
 
 ## Error Analysis
@@ -392,13 +321,6 @@ output/training_history_three_branch.json
 output/class_distribution_report_three_branch.json
 output/confusion_matrix_three_branch.png
 output/error_samples_three_branch.csv
-output/error_analysis.csv
-output/error_summary.txt
-output/joy_to_sadness.csv
-output/anger_to_sadness.csv
-output/disgust_to_sadness.csv
-output/anger_to_disgust.csv
-output/disgust_to_anger.csv
 output/low_missed_errors_three_branch.csv
 output/predicted_low_samples_three_branch.csv
 output/training_curves_three_branch.png
@@ -416,56 +338,7 @@ Ablation output:
 ablation_results_weibo.csv
 ```
 
-## Notes on Data and Checkpoints
-
-Large cache files, encoded NumPy arrays, and model checkpoints may not be uploaded to the repository. They can be regenerated locally from the raw data and training scripts.
-
-To reproduce the experiment, place the raw simplifyweibo files under:
-
-```text
-data/raw/
-```
-
-Then run data preparation before training:
-
-```bash
-python prepare_weibo_txt_dataset.py
-python main.py
-```
-
-## Known Limitations
-
-Overall performance is modest. The current three-branch model reaches around 40% accuracy and Macro-F1 around 0.40, so it should be treated as a CNN baseline rather than a production-grade classifier.
-
-The `低落` class remains unstable. Recall improves in the current weighted setting, but precision is low, which means the model often predicts non-low samples as `低落`.
-
-Negative emotions are heavily confused. `愤怒`, `厌恶`, and `低落` are semantically close in noisy Weibo text, and the model frequently mixes them.
-
-TextCNN has limited contextual understanding. Sarcasm, irony, mixed emotion, long-range dependency, and subtle discourse-level sentiment remain difficult.
-
-Keyword and phrase rules are manually designed. They help interpretability and phrase matching, but they may introduce bias and cannot cover all real Weibo expressions.
-
-Data quality may be a major bottleneck. The audit found many possible keyword-label mismatches. These are not guaranteed wrong labels, but they deserve manual inspection.
-
-Gated fusion is not clearly superior yet. Current ablation results show only a small Macro-F1 difference between concat and gated fusion, so more tuning or a better gate design may be needed.
-
-## Future Work
-
-### Short-term Improvements
-
-- manually inspect high-risk label mismatch samples
-- compare with TF-IDF + linear baseline
-- run multiple seeds for more reliable ablation results
-- clean or relabel a small high-quality validation subset
-
-### Next Model Stage
-
-- implement RNN / LSTM baselines
-- implement Transformer encoder baseline
-- fine-tune a pretrained Chinese encoder such as BERT, RoBERTa, or MacBERT
-- compare traditional CNN-based models with pretrained language models
-
-## Development Notes
+## Project Development History
 
 The project has gone through several stages:
 
@@ -502,22 +375,57 @@ The project has gone through several stages:
    - added keyword-based possible label mismatch checks
    - added weak-label-evidence exports
 
-## Repository Name And Topic
+## Known Limitations
 
-Recommended repository name:
+1. Overall accuracy is still modest.
+   - The current three-branch model reaches around 40% accuracy and Macro-F1 around 0.40.
 
-```text
-weibo-multiview-textcnn-emotion
+2. The `低落` class remains unstable.
+   - Recall improves, but precision is low.
+   - The model tends to over-predict `低落` in some settings.
+
+3. Keyword and phrase rules are manually designed.
+   - They help interpretability and phrase matching, but they may introduce bias.
+
+4. TextCNN has limited contextual understanding.
+   - Sarcasm, irony, mixed emotion, and long discourse remain hard.
+   - A pretrained Chinese model such as BERT/RoBERTa/MacBERT would likely be stronger.
+
+5. Data quality may be a major bottleneck.
+   - The audit found many possible keyword-label mismatches.
+   - These are not guaranteed wrong labels, but they deserve manual inspection.
+
+6. Gated fusion is not clearly superior yet.
+   - Current ablation results show only a small Macro-F1 difference between concat and gated fusion.
+   - More tuning or a better gate design may be needed.
+
+## Next Steps
+
+Possible future directions:
+
+- manually inspect high-risk label mismatch samples
+- clean or relabel a small high-quality validation set
+- compare against TF-IDF + linear baseline
+- add pretrained Chinese encoder baseline
+- improve low-mood class precision
+- try focal loss or class-balanced loss
+- tune gate architecture and branch dimensions
+- run multiple seeds for more reliable ablation conclusions
+- move generated reports and model weights into release artifacts instead of the main repository
+
+## Quick Start
+
+```bash
+python prepare_weibo_txt_dataset.py
+python main.py
+python ablation.py
+python data_quality_audit.py
 ```
 
-Suggested topic/theme:
+Recommended reading order:
 
-```text
-Chinese Weibo emotion classification with multi-view TextCNN, ablation study, error analysis, and data quality audit.
-```
-
-中文主题：
-
-```text
-微博四情绪分类实验：三路 TextCNN、消融实验、错误样本分析与数据质量审计
-```
+1. `data_quality_report/dataset_basic_info.txt`
+2. `output/test_metrics_three_branch.json`
+3. `ablation_results_weibo.csv`
+4. `output/error_analysis.csv`
+5. `data_quality_report/possible_label_mismatch.csv`
