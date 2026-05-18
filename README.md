@@ -1,167 +1,191 @@
-# Chinese Weibo Emotion Classification with Multi-View TextCNN
+# Chinese Emotion Classification with Multi-View TextCNN
 
-> A complete NLP baseline project with multi-view TextCNN, ablation study, error analysis, and data quality audit.
+本项目是一个基于 PyTorch 的中文微博情绪分类实验项目，目标是对中文短文本进行四分类情绪识别：
 
-## Project Highlights
+- 喜悦
+- 愤怒
+- 厌恶
+- 低落
 
-- raw Weibo text preprocessing
-- char / word / phrase multi-view tokenization
-- multi-branch TextCNN baseline
-- concat fusion and gated fusion comparison
-- ablation study across different model structures
-- confusion matrix and high-confidence error analysis
-- dataset quality audit and possible label-noise detection
-- caching and Trie-based tokenization for faster repeated experiments
+项目最初从基础文本分类实验出发，逐步扩展为一个包含数据预处理、三路文本视角建模、训练评估、误差分析、数据质量审计和消融实验的完整小型深度学习项目。
 
-This project is not designed to chase the highest possible accuracy. Instead, it focuses on building a complete and reproducible NLP classification workflow before moving to RNN, LSTM, Transformer, and pretrained Chinese language models.
+当前版本的核心模型是 **三分支 TextCNN + 门控融合机制**。模型分别从字粒度、词粒度和短语粒度提取文本特征，再通过 gate 对不同分支特征进行加权融合，最后完成情绪分类。
 
-## Project Overview
+---
 
-This project is an experimental Chinese NLP baseline for the simplifyweibo four-mood dataset. It started from a simple TextCNN classifier and gradually developed into a full workflow covering data preparation, model training, evaluation, diagnosis, ablation, and data-quality inspection.
+## 1. 项目特点
 
-The current task is a four-class Weibo emotion classification problem:
+本项目不是单纯调用现成模型，而是围绕一个中文情绪分类任务，完整实现了从数据处理到模型分析的训练流程。
 
-| Label ID | Emotion |
-| --- | --- |
-| 0 | 喜悦 |
-| 1 | 愤怒 |
-| 2 | 厌恶 |
-| 3 | 低落 |
+主要特点包括：
 
-The main goal is not only to train one classifier, but to understand the whole experimental process:
+1. **中文微博情绪四分类**
+   - 支持喜悦、愤怒、厌恶、低落四类情绪识别。
+   - 数据格式统一为 `text,label`。
 
-- whether character-level, word-level, and phrase-level information help differently
-- whether gated fusion is better than simple concat
-- how class imbalance affects low-frequency emotions such as `低落`
-- where the model makes high-confidence mistakes
-- whether the dataset itself contains weak labels, suspicious samples, or possible label noise
+2. **多视角文本表示**
+   - 字粒度 `char`
+   - 词粒度 `word`
+   - 短语粒度 `phrase`
 
-In short, this repository is closer to an emotion-classification experiment lab than a single training script.
+3. **三分支 TextCNN**
+   - 每个分支独立进行 Embedding、Conv1d、ReLU、Max Pooling。
+   - 不同粒度使用不同最大长度、卷积核大小和 embedding 维度。
 
-## Main Results
+4. **门控融合机制**
+   - 将 char、word、phrase 三路特征拼接后输入 gate。
+   - gate 输出每一路特征的权重。
+   - 通过加权后的多路特征进行最终分类。
 
-Current three-branch gated TextCNN test result:
+5. **完整训练流程**
+   - AdamW 优化器
+   - CrossEntropyLoss
+   - 类别权重 class weight
+   - ReduceLROnPlateau 学习率调度
+   - Early stopping
+   - 保存最佳验证集 macro-F1 模型
 
-| Metric | Value |
-| --- | ---: |
-| test loss | 1.4006 |
-| accuracy | 0.4079 |
-| macro precision | 0.4180 |
-| macro recall | 0.4074 |
-| macro F1 | 0.3978 |
+6. **完整评估与诊断**
+   - Accuracy
+   - Macro Precision
+   - Macro Recall
+   - Macro F1
+   - 每类 precision / recall / F1
+   - 混淆矩阵
+   - 错分样本导出
+   - 重点错分类型分析
+   - 低落类专项诊断
 
-Per-class result:
+7. **数据质量审计**
+   - 类别分布检查
+   - 文本长度检查
+   - 重复文本检查
+   - 同文本多标签冲突检查
+   - 关键词启发式标签异常检查
+   - 模板化数据风险检查
 
-| Emotion | Precision | Recall | F1 | Support |
-| --- | ---: | ---: | ---: | ---: |
-| 喜悦 | 0.5531 | 0.4706 | 0.5085 | 5,000 |
-| 愤怒 | 0.4439 | 0.3327 | 0.3803 | 4,136 |
-| 厌恶 | 0.4809 | 0.3972 | 0.4351 | 4,411 |
-| 低落 | 0.1940 | 0.4290 | 0.2672 | 2,105 |
+8. **消融实验**
+   - char only
+   - word only
+   - phrase only
+   - char + word
+   - char + word + phrase concat
+   - char + word + phrase gated fusion
 
-Although the absolute performance is modest, the experiment provides a useful CNN-based baseline. The results show that TextCNN can capture some local emotional patterns, but it struggles with noisy labels, subtle emotional boundaries, sarcasm, and negative-emotion confusion.
+---
 
-The `低落` class is the most difficult part of the current system. The model catches more low-mood samples after class weighting, but precision is weak, meaning many non-low samples are also predicted as `低落`.
-
-## Quick Start
-
-```bash
-python prepare_weibo_txt_dataset.py
-python main.py
-python ablation.py
-python data_quality_audit.py
-```
-
-For first-time users, it is recommended to read the outputs in the following order:
-
-1. `data_quality_report/dataset_basic_info.txt`
-2. `output/test_metrics_three_branch.json`
-3. `ablation_results_weibo.csv`
-4. `output/error_analysis.csv`
-5. `data_quality_report/possible_label_mismatch.csv`
-
-## Project Structure
+## 2. 项目结构
 
 ```text
-weibo-multiview-textcnn-emotion/
-├── data/
-│   ├── raw/
-│   ├── weibo_train.csv
-│   ├── weibo_val.csv
-│   └── weibo_test.csv
-├── cache/
-│   ├── tokenized_*.json
-│   └── encoded_*.npy
-├── output/
-│   ├── best_three_branch_textcnn.pt
-│   ├── test_metrics_three_branch.json
-│   ├── confusion_matrix_three_branch.png
-│   └── error_analysis.csv
-├── data_quality_report/
-├── prepare_weibo_txt_dataset.py
+mlp-classification-pytorch-real/
+│
 ├── config.py
-├── tokenizer.py
+├── prepare_weibo_txt_dataset.py
+├── data_quality_audit.py
 ├── data_utils.py
+├── tokenizer.py
 ├── model.py
 ├── train.py
 ├── evaluate.py
 ├── predict.py
 ├── main.py
 ├── ablation.py
-├── data_quality_audit.py
-└── README.md
+├── utils.py
+├── requirements.txt
+├── README.md
+│
+├── data/
+│   ├── raw/
+│   │   ├── 0_simplifyweibo.txt
+│   │   ├── 1_simplifyweibo.txt
+│   │   ├── 2_simplifyweibo.txt
+│   │   └── 3_simplifyweibo.txt
+│   │
+│   ├── weibo_train.csv
+│   ├── weibo_val.csv
+│   └── weibo_test.csv
+│
+├── cache/
+│   ├── tokenized_xxx.json
+│   └── encoded_xxx.npy
+│
+├── output/
+│   ├── best_three_branch_textcnn.pt
+│   ├── multiview_vocabs.json
+│   ├── label_map.json
+│   ├── test_metrics_three_branch.json
+│   ├── training_history_three_branch.json
+│   ├── training_curves_three_branch.png
+│   ├── confusion_matrix_three_branch.png
+│   ├── error_samples_three_branch.csv
+│   ├── error_analysis.csv
+│   ├── error_summary.txt
+│   ├── class_distribution_report_three_branch.json
+│   ├── low_missed_errors_three_branch.csv
+│   └── predicted_low_samples_three_branch.csv
+│
+└── data_quality_report/
+    ├── dataset_basic_info.txt
+    ├── label_distribution.csv
+    ├── text_length_summary.csv
+    ├── duplicated_texts.csv
+    ├── duplicated_text_conflicting_labels.csv
+    ├── top_repeated_texts.csv
+    ├── possible_label_mismatch.csv
+    ├── weak_label_evidence_samples.csv
+    ├── label_sanity_summary.txt
+    └── suspicious_summary.txt
 ```
 
-## Skills Demonstrated
+---
 
-- Chinese text preprocessing with pandas
-- train / validation / test split construction
-- PyTorch model training and evaluation
-- multi-branch neural network design
-- tokenization and vocabulary construction
-- Trie-based longest-match optimization
-- caching for repeated experiments
-- ablation study design
-- confusion matrix and error analysis
-- dataset quality audit and weak-label inspection
-- reproducible experiment logging
+## 3. 版本迭代过程
 
-## Environment / Requirements
+### v1.0：基础文本分类原型
 
-Recommended environment:
-
-- Python >= 3.10
-- pandas
-- numpy
-- torch
-- scikit-learn
-- matplotlib
-- tqdm
-
-Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-## Dataset
-
-The raw simplifyweibo data is expected under:
+早期版本主要目标是跑通中文文本分类的最小流程：
 
 ```text
-data/raw/0_simplifyweibo.txt
-data/raw/1_simplifyweibo.txt
-data/raw/2_simplifyweibo.txt
-data/raw/3_simplifyweibo.txt
+CSV 数据读取
+→ 文本清洗
+→ 标签编码
+→ 模型训练
+→ 测试集评估
 ```
 
-Each raw file contains one tokenized and POS-tagged Weibo sentence per line, for example:
+这一阶段的重点不是追求模型复杂度，而是先验证：
+
+- 数据能否正常读取；
+- 标签是否能正确映射；
+- PyTorch 训练流程是否能跑通；
+- 模型是否能在真实中文文本上产生可用结果。
+
+该阶段更接近一个基础分类 baseline，为后续 CNN、多粒度文本表示和误差分析打基础。
+
+### v1.1：微博情绪数据集整理
+
+在 v1.1 中，项目加入了微博情绪数据预处理脚本 `prepare_weibo_txt_dataset.py`。
+
+该版本完成了从原始 txt 文件到标准 CSV 数据集的转换。原始数据按类别存放：
 
 ```text
-家/n 有/vyou 傻/a 犬/ng ~/x 不要/d 再/d 裝/x 笨/a 好/a 不好/a
+data/raw/0_simplifyweibo.txt    # 喜悦
+data/raw/1_simplifyweibo.txt    # 愤怒
+data/raw/2_simplifyweibo.txt    # 厌恶
+data/raw/3_simplifyweibo.txt    # 低落
 ```
 
-`prepare_weibo_txt_dataset.py` removes POS tags and converts the files into:
+处理流程包括：
+
+1. 读取原始 txt 文本；
+2. 去除词性标注；
+3. 清洗空文本和过短文本；
+4. 去重；
+5. 按类别平衡采样；
+6. 划分 train / val / test；
+7. 保存为标准 CSV 文件。
+
+输出文件：
 
 ```text
 data/weibo_train.csv
@@ -169,152 +193,247 @@ data/weibo_val.csv
 data/weibo_test.csv
 ```
 
-Each CSV contains:
+每条样本格式为：
 
-```text
+```csv
 text,label
+今天真的很开心,0
+气死我了,1
+太恶心了,2
+有点难过,3
 ```
 
-Current split statistics from `data_quality_report/dataset_basic_info.txt`:
+### v1.2：多粒度文本切分
 
-| Split | Samples |
-| --- | ---: |
-| train | 125,204 |
-| val | 15,650 |
-| test | 15,652 |
-| total | 156,506 |
+v1.2 开始不再只把文本当作单一序列处理，而是加入了三种文本视角：
 
-Current label distribution:
+| 视角 | 含义 | 作用 |
+| --- | --- | --- |
+| char | 字粒度 | 保留中文短文本中的细粒度信息 |
+| word | 词粒度 | 捕捉常见情绪词和语义单元 |
+| phrase | 短语粒度 | 捕捉“非常开心”“不太舒服”“真的很失望”等组合表达 |
 
-| Emotion | Count | Ratio |
-| --- | ---: | ---: |
-| 喜悦 | 50,000 | 31.95% |
-| 厌恶 | 44,105 | 28.18% |
-| 愤怒 | 41,360 | 26.43% |
-| 低落 | 21,041 | 13.44% |
+对应代码主要在 `tokenizer.py` 中实现。该版本加入了：
 
-The dataset is still imbalanced. The largest class is about `2.38x` the smallest class.
+- 情绪词表；
+- 程度副词词表；
+- 否定词词表；
+- 情绪短语词表；
+- longest-match 最长匹配分词；
+- Trie 加速版本；
+- tokenizer 一致性测试。
 
-## Model Design
+三种 tokenizer 分别为：
 
-The main diagnostic model used for detailed evaluation is a three-view gated TextCNN:
+```python
+char_tokenize(text)
+word_tokenize(text)
+phrase_tokenize(text)
+```
+
+这一阶段的核心意义是：模型不再只依赖单一文本粒度，而是尝试从不同层级捕捉中文情绪表达。
+
+### v1.3：三分支 TextCNN 模型
+
+v1.3 将模型升级为三分支 TextCNN。每个分支结构如下：
 
 ```text
-text
-├── char_tokenize   -> char_vocab   -> char CNN branch
-├── word_tokenize   -> word_vocab   -> word CNN branch
-└── phrase_tokenize -> phrase_vocab -> phrase CNN branch
+input_ids
+→ Embedding
+→ Conv1d
+→ ReLU
+→ Max Pooling
+→ Dropout
+→ branch feature
+```
 
+三个分支分别处理：
+
+```text
+char_ids
+word_ids
+phrase_ids
+```
+
+模型结构大致为：
+
+```text
+char branch   ┐
+word branch   ├─ feature fusion → classifier → logits
+phrase branch ┘
+```
+
+核心模块：
+
+```python
+CNNBranch
+AblationEmotionCNN
+MultiViewEmotionCNN
+```
+
+其中 `CNNBranch` 是基础 CNN 特征提取模块，`MultiViewEmotionCNN` 是当前主模型。
+
+这一版本的意义是：
+
+- 字粒度适合处理中文短文本中的局部模式；
+- 词粒度适合捕捉明确情绪词；
+- 短语粒度适合捕捉否定、程度、组合语义；
+- 三路结构比单一路径更适合做可解释的文本分类实验。
+
+### v1.4：门控融合机制
+
+v1.4 在三分支 TextCNN 的基础上加入 gate 机制。
+
+普通 concat 融合方式是：
+
+```text
 char_feature + word_feature + phrase_feature
-    -> gated fusion
-    -> classifier
+→ concat
+→ classifier
 ```
 
-This does not mean gated fusion is proven to be better. In the current ablation run, simple three-view concat achieves the highest Accuracy, while gated fusion only gives the best Macro-F1 by a very small margin. Therefore, gated fusion should be treated as an experimental design rather than a confirmed improvement.
-
-Each branch follows the same basic CNN pattern:
+门控融合方式是：
 
 ```text
-input_ids -> Embedding -> Conv1d -> ReLU -> MaxPool -> feature
+char_feature
+word_feature
+phrase_feature
+→ concat 得到 raw_fused_feature
+→ gate 网络输出每个分支的权重
+→ 每个分支特征乘以对应 gate weight
+→ 再 concat
+→ classifier
 ```
 
-The project also includes `AblationEmotionCNN`, which can enable different branch combinations and switch between simple concat and gated fusion.
+gate 的作用是让模型自己学习：
 
-## Tokenizer And Speed Optimization
+- 当前样本更依赖字粒度；
+- 当前样本更依赖词粒度；
+- 当前样本更依赖短语粒度。
 
-The project keeps three tokenization views:
-
-- `char_tokenize`: character-level tokens
-- `word_tokenize`: longest-match word-level tokens
-- `phrase_tokenize`: longest-match phrase-level emotional phrases
-
-To avoid slow repeated matching, the word and phrase tokenizers use Trie-based longest matching:
+例如：
 
 ```text
-WORD_TRIE_TOKENIZER
-PHRASE_TRIE_TOKENIZER
+“哈哈哈今天太开心了”
 ```
 
-The original `longest_match_tokenize()` is kept for consistency testing. Before training, `test_trie_tokenizer_consistency()` checks that Trie tokenization matches the original logic.
-
-Caching is also added:
+可能更依赖 char 和 phrase。
 
 ```text
-cache/tokenized_*.json
-cache/encoded_*.npy
+“恶心”“离谱”“失望”
 ```
 
-This means tokenization and encoding are not repeated every epoch.
-
-## Training Flow
-
-Run data preparation:
-
-```bash
-python prepare_weibo_txt_dataset.py
-```
-
-Train the main three-branch model:
-
-```bash
-python main.py
-```
-
-Current training settings:
-
-| Setting | Value |
-| --- | --- |
-| epochs | 50 |
-| patience | 6 |
-| optimizer | AdamW |
-| scheduler | ReduceLROnPlateau |
-| save metric | validation Macro-F1 |
-| loss | CrossEntropyLoss with optional class weights |
-| checkpoint | `output/best_three_branch_textcnn.pt` |
-
-The final test evaluation always reloads the best validation Macro-F1 checkpoint. It does not simply use the last epoch.
-
-## Ablation Study
-
-Run:
-
-```bash
-python ablation.py
-```
-
-Output:
+可能更依赖 word。
 
 ```text
-ablation_results_weibo.csv
+“不太开心”“没有很难过”
 ```
 
-Current ablation result:
+可能更依赖 phrase，因为否定词和程度副词组合会影响情绪判断。
 
-| Model | Accuracy | Macro-F1 |
-| --- | ---: | ---: |
-| char_only | 0.3950 | 0.3895 |
-| word_only | 0.4010 | 0.3899 |
-| phrase_only | 0.3875 | 0.3786 |
-| char_word_concat | 0.3708 | 0.3660 |
-| char_word_phrase_concat | 0.4284 | 0.3991 |
-| char_word_phrase_gated | 0.4076 | 0.3995 |
+当前模型使用：
 
-Interpretation:
+```python
+MultiViewEmotionCNN
+```
 
-- phrase-only is not enough by itself.
-- simple three-view concat achieves the best accuracy in the current run.
-- gated fusion gives the best Macro-F1 by a very small margin.
-- the gated model is not decisively better than concat.
-- therefore, gated fusion should be treated as an experimental design rather than a proven improvement.
-- char/word/phrase views appear useful together, but fusion strategy still needs more tuning.
+默认启用：
 
-## Error Analysis
+```python
+enabled_branches = ["char", "word", "phrase"]
+use_gate = True
+```
 
-After test evaluation, the project exports:
+### v1.5：训练流程工程化
+
+v1.5 对训练流程进行了工程化整理，主入口为 `main.py`。
+
+完整训练流程：
 
 ```text
+读取 train / val / test
+→ 清洗数据
+→ 打印类别分布
+→ tokenizer 示例检查
+→ Trie tokenizer 一致性测试
+→ 三路 tokenizer
+→ 构建三路 vocab
+→ 编码为 id 序列
+→ 构建 DataLoader
+→ 初始化三分支 TextCNN
+→ 计算类别权重
+→ 训练
+→ 验证集评估
+→ 保存最佳模型
+→ 测试集评估
+→ 保存输出结果
+```
+
+训练配置集中放在 `config.py` 中，包括：
+
+```python
+EPOCHS = 50
+BATCH_SIZE = 64
+LR = 0.0008
+WEIGHT_DECAY = 1e-4
+MAX_GRAD_NORM = 1.0
+PATIENCE = 6
+SAVE_METRIC = "val_macro_f1"
+USE_CLASS_WEIGHT = True
+```
+
+优化策略：
+
+- AdamW
+- ReduceLROnPlateau
+- gradient clipping
+- early stopping
+- 按验证集 macro-F1 保存最佳模型
+
+这一版本的意义是：项目不再只是“能训练”，而是形成了较完整、可复现、可分析的训练管线。
+
+### v1.6：评估、可视化与误差分析
+
+v1.6 加入了更完整的评估模块。测试阶段会输出：
+
+- loss
+- accuracy
+- macro precision
+- macro recall
+- macro F1
+- 每个类别的 precision / recall / F1
+- confusion matrix
+
+同时保存：
+
+```text
+output/test_metrics_three_branch.json
+output/training_history_three_branch.json
+output/training_curves_three_branch.png
+output/confusion_matrix_three_branch.png
+```
+
+此外，项目会导出错分样本：
+
+```text
+output/error_samples_three_branch.csv
 output/error_analysis.csv
 output/error_summary.txt
+```
+
+并额外关注几类重要错分：
+
+```text
+喜悦 -> 低落
+愤怒 -> 低落
+厌恶 -> 低落
+愤怒 -> 厌恶
+厌恶 -> 愤怒
+```
+
+对应输出：
+
+```text
 output/joy_to_sadness.csv
 output/anger_to_sadness.csv
 output/disgust_to_sadness.csv
@@ -322,39 +441,37 @@ output/anger_to_disgust.csv
 output/disgust_to_anger.csv
 ```
 
-`error_analysis.csv` contains:
+由于“低落”类在情绪分类中容易和其他负向情绪混淆，项目还单独导出：
 
 ```text
-text,true_label,pred_label,confidence,prob_喜悦,prob_愤怒,prob_厌恶,prob_低落
+output/low_missed_errors_three_branch.csv
+output/predicted_low_samples_three_branch.csv
 ```
 
-This makes it easier to inspect high-confidence wrong predictions, especially emotionally close pairs such as:
+这一版本的重点是：不仅看总体准确率，还要分析模型到底错在哪里。
 
-- 愤怒 -> 厌恶
-- 厌恶 -> 愤怒
-- 喜悦 / 愤怒 / 厌恶 -> 低落
+### v1.7：数据质量审计
 
-## Data Quality Audit
+v1.7 加入了 `data_quality_audit.py`，用于检查数据本身是否存在问题。
 
-Run:
+该脚本会自动检查：
 
-```bash
-python data_quality_audit.py
-```
+1. 数据基本信息；
+2. 类别分布；
+3. 文本长度；
+4. 空文本和过短文本；
+5. 重复文本；
+6. 同文本不同标签冲突；
+7. 情绪关键词与标签是否疑似不一致；
+8. 数据是否存在模板化或过度采样痕迹。
 
-You can also audit a custom file:
-
-```bash
-python data_quality_audit.py --input data.csv --text_col text --label_col label
-```
-
-The report directory:
+输出目录：
 
 ```text
 data_quality_report/
 ```
 
-Generated reports:
+主要报告：
 
 ```text
 dataset_basic_info.txt
@@ -369,155 +486,354 @@ label_sanity_summary.txt
 suspicious_summary.txt
 ```
 
-Current audit highlights:
+这一版本的意义是：如果模型效果不好，不一定是模型结构问题，也可能是数据本身存在噪声、重复、标签冲突或类别分布问题。因此需要先审计数据，再解释模型表现。
 
-- total samples: 156,506
-- empty text count: 0
-- length <= 2 count: 12
-- duplicated text rows: 0
-- conflicting-label duplicated text rows: 0
-- possible keyword-based label mismatch samples: 19,105
-- weak label evidence samples exported: 800
+### v1.8：消融实验
 
-Important: keyword-based mismatch detection is heuristic. It only marks suspicious samples for human review. It cannot prove that the original label is wrong.
+v1.8 加入了 `ablation.py`，用于比较不同分支和不同融合方式的效果。
 
-## Output Files
+实验配置包括：
 
-Main training outputs:
-
-```text
-output/best_three_branch_textcnn.pt
-output/test_metrics_three_branch.json
-output/training_history_three_branch.json
-output/class_distribution_report_three_branch.json
-output/confusion_matrix_three_branch.png
-output/error_samples_three_branch.csv
-output/error_analysis.csv
-output/error_summary.txt
-output/joy_to_sadness.csv
-output/anger_to_sadness.csv
-output/disgust_to_sadness.csv
-output/anger_to_disgust.csv
-output/disgust_to_anger.csv
-output/low_missed_errors_three_branch.csv
-output/predicted_low_samples_three_branch.csv
-output/training_curves_three_branch.png
+```python
+experiments = [
+    {"name": "char_only", "enabled_branches": ["char"], "use_gate": False},
+    {"name": "word_only", "enabled_branches": ["word"], "use_gate": False},
+    {"name": "phrase_only", "enabled_branches": ["phrase"], "use_gate": False},
+    {"name": "char_word_concat", "enabled_branches": ["char", "word"], "use_gate": False},
+    {"name": "char_word_phrase_concat", "enabled_branches": ["char", "word", "phrase"], "use_gate": False},
+    {"name": "char_word_phrase_gated", "enabled_branches": ["char", "word", "phrase"], "use_gate": True},
+]
 ```
 
-Data audit outputs:
-
-```text
-data_quality_report/
-```
-
-Ablation output:
+输出文件：
 
 ```text
 ablation_results_weibo.csv
 ```
 
-## Notes on Data and Checkpoints
+记录指标：
 
-Large cache files, encoded NumPy arrays, and model checkpoints may not be uploaded to the repository. They can be regenerated locally from the raw data and training scripts.
+- test loss
+- test accuracy
+- macro precision
+- macro recall
+- macro F1
 
-To reproduce the experiment, place the raw simplifyweibo files under:
+该版本用于回答：
+
+1. 字粒度是否有效？
+2. 词粒度是否有效？
+3. 短语粒度是否有效？
+4. 多分支是否优于单分支？
+5. gate 是否优于普通 concat？
+6. 模型提升来自结构设计，还是只是参数量增加？
+
+---
+
+## 4. 安装依赖
+
+建议使用 Python 3.10 或以上版本。
+
+```bash
+pip install -r requirements.txt
+```
+
+也可以手动安装核心依赖：
+
+```bash
+pip install torch pandas numpy matplotlib scikit-learn tqdm
+```
+
+其中 `scikit-learn` 主要用于：
+
+- train / val / test 数据划分；
+- balanced class weight 计算。
+
+---
+
+## 5. 数据准备
+
+将原始微博情绪数据放入：
 
 ```text
 data/raw/
 ```
 
-Then run data preparation before training:
+文件命名：
+
+```text
+0_simplifyweibo.txt
+1_simplifyweibo.txt
+2_simplifyweibo.txt
+3_simplifyweibo.txt
+```
+
+类别对应关系：
+
+| label | emotion |
+| --- | --- |
+| 0 | 喜悦 |
+| 1 | 愤怒 |
+| 2 | 厌恶 |
+| 3 | 低落 |
+
+运行数据预处理：
 
 ```bash
 python prepare_weibo_txt_dataset.py
+```
+
+生成：
+
+```text
+data/weibo_train.csv
+data/weibo_val.csv
+data/weibo_test.csv
+```
+
+---
+
+## 6. 数据质量审计
+
+训练前建议先运行：
+
+```bash
+python data_quality_audit.py
+```
+
+如果使用默认路径，脚本会读取：
+
+```text
+data/weibo_train.csv
+data/weibo_val.csv
+data/weibo_test.csv
+```
+
+也可以指定单个文件：
+
+```bash
+python data_quality_audit.py --input data/weibo_train.csv
+```
+
+或指定三份数据：
+
+```bash
+python data_quality_audit.py \
+  --train data/weibo_train.csv \
+  --val data/weibo_val.csv \
+  --test data/weibo_test.csv
+```
+
+审计结果会保存到：
+
+```text
+data_quality_report/
+```
+
+---
+
+## 7. 训练模型
+
+运行主训练流程：
+
+```bash
 python main.py
 ```
 
-## Known Limitations
+训练过程中会自动完成：
 
-Overall performance is modest. The current three-branch model reaches around 40% accuracy and Macro-F1 around 0.40, so it should be treated as a CNN baseline rather than a production-grade classifier.
+1. 数据读取；
+2. 文本清洗；
+3. 三路 tokenizer；
+4. 构建 vocab；
+5. token id 编码；
+6. 构建 DataLoader；
+7. 模型训练；
+8. 验证集评估；
+9. 保存最佳模型；
+10. 测试集评估；
+11. 输出图表和错误分析文件。
 
-The `低落` class remains unstable. Recall improves in the current weighted setting, but precision is low, which means the model often predicts non-low samples as `低落`.
+---
 
-Negative emotions are heavily confused. `愤怒`, `厌恶`, and `低落` are semantically close in noisy Weibo text, and the model frequently mixes them.
+## 8. 消融实验
 
-TextCNN has limited contextual understanding. Sarcasm, irony, mixed emotion, long-range dependency, and subtle discourse-level sentiment remain difficult.
+运行：
 
-Keyword and phrase rules are manually designed. They help interpretability and phrase matching, but they may introduce bias and cannot cover all real Weibo expressions.
-
-Data quality may be a major bottleneck. The audit found many possible keyword-label mismatches. These are not guaranteed wrong labels, but they deserve manual inspection.
-
-Gated fusion is not clearly superior yet. Current ablation results show only a small Macro-F1 difference between concat and gated fusion, so more tuning or a better gate design may be needed.
-
-## Future Work
-
-### Short-term Improvements
-
-- manually inspect high-risk label mismatch samples
-- compare with TF-IDF + linear baseline
-- run multiple seeds for more reliable ablation results
-- clean or relabel a small high-quality validation subset
-
-### Next Model Stage
-
-- implement RNN / LSTM baselines
-- implement Transformer encoder baseline
-- fine-tune a pretrained Chinese encoder such as BERT, RoBERTa, or MacBERT
-- compare traditional CNN-based models with pretrained language models
-
-## Development Notes
-
-The project has gone through several stages:
-
-1. Baseline TextCNN
-   - started from a simpler CNN classifier
-   - used basic train/evaluate/predict scripts
-
-2. Weibo four-mood dataset adaptation
-   - converted raw simplifyweibo txt files into CSV splits
-   - switched labels to `喜悦 / 愤怒 / 厌恶 / 低落`
-
-3. Multi-view tokenization
-   - added char, word, and phrase tokenization
-   - added emotional word and phrase vocabularies
-
-4. Three-branch TextCNN
-   - added separate CNN branches for char, word, phrase inputs
-   - added concat and gated-fusion structures
-
-5. Training efficiency improvement
-   - added Trie tokenization
-   - added tokenized and encoded cache
-   - added progress logging and long-epoch training
-
-6. Evaluation and diagnosis
-   - added per-class metrics
-   - added confusion matrix
-   - added low-class diagnosis
-   - added high-confidence error exports
-
-7. Data quality audit
-   - added dataset-level statistics
-   - added duplicate and conflict checks
-   - added keyword-based possible label mismatch checks
-   - added weak-label-evidence exports
-
-## Repository Name And Topic
-
-Recommended repository name:
-
-```text
-weibo-multiview-textcnn-emotion
+```bash
+python ablation.py
 ```
 
-Suggested topic/theme:
+输出：
 
 ```text
-Chinese Weibo emotion classification with multi-view TextCNN, ablation study, error analysis, and data quality audit.
+ablation_results_weibo.csv
 ```
 
-中文主题：
+该文件用于比较不同模型结构的效果。
+
+---
+
+## 9. 单句预测
+
+`main.py` 在交互式终端中运行结束后，会进入单句预测模式：
 
 ```text
-微博四情绪分类实验：三路 TextCNN、消融实验、错误样本分析与数据质量审计
+输入一句中文文本预测情绪，直接回车退出。
+请输入文本:
 ```
+
+示例：
+
+```text
+请输入文本: 今天真的很开心
+预测类别: 喜悦 (0)
+```
+
+---
+
+## 10. 当前模型结构说明
+
+当前主模型为：
+
+```text
+ThreeBranchTextCNN-SigmoidGatedFusion
+```
+
+整体结构：
+
+```text
+text
+│
+├── char tokenizer   → char ids   → char CNN branch
+├── word tokenizer   → word ids   → word CNN branch
+└── phrase tokenizer → phrase ids → phrase CNN branch
+                              │
+                              ↓
+                    gated feature fusion
+                              │
+                              ↓
+                         classifier
+                              │
+                              ↓
+                           logits
+```
+
+每个 CNN branch：
+
+```text
+Embedding
+→ Conv1d with multiple kernel sizes
+→ ReLU
+→ Max Pooling over time
+→ Dropout
+```
+
+融合层：
+
+```text
+concat(char_feature, word_feature, phrase_feature)
+→ gate network
+→ sigmoid gate weights
+→ gated branch features
+→ concat
+→ classifier
+```
+
+分类器：
+
+```text
+Linear
+→ ReLU
+→ Dropout
+→ Linear
+→ logits
+```
+
+---
+
+## 11. 输出文件说明
+
+训练完成后，主要输出如下：
+
+| 文件 | 说明 |
+| --- | --- |
+| `output/best_three_branch_textcnn.pt` | 最佳模型 checkpoint |
+| `output/multiview_vocabs.json` | char / word / phrase 三路词表 |
+| `output/label_map.json` | 标签映射 |
+| `output/test_metrics_three_branch.json` | 测试集指标 |
+| `output/training_history_three_branch.json` | 训练历史 |
+| `output/training_curves_three_branch.png` | 训练曲线 |
+| `output/confusion_matrix_three_branch.png` | 混淆矩阵 |
+| `output/error_samples_three_branch.csv` | 错分样本 |
+| `output/error_analysis.csv` | 带概率的错分分析 |
+| `output/error_summary.txt` | 错误类型统计 |
+| `output/class_distribution_report_three_branch.json` | 类别诊断报告 |
+| `output/low_missed_errors_three_branch.csv` | 低落类漏判样本 |
+| `output/predicted_low_samples_three_branch.csv` | 被预测为低落的样本 |
+
+---
+
+## 12. 项目反思
+
+这个项目的重点不只是训练出一个分类器，而是通过一个完整任务理解深度学习项目的基本工程流程：
+
+```text
+数据质量
+→ 文本表示
+→ 模型结构
+→ 训练策略
+→ 评估指标
+→ 错误分析
+→ 消融实验
+```
+
+相比只看 accuracy，本项目更关注：
+
+- 哪些类别更难分；
+- 模型是否偏向某些类别；
+- “低落”和其他负向情绪为什么容易混淆；
+- 多粒度输入是否真的带来提升；
+- gate 是否比普通 concat 更有效；
+- 数据标签本身是否存在噪声。
+
+因此，这个项目更适合作为一个本科阶段的深度学习/NLP 工程练习项目，而不是单纯追求最高分数的竞赛项目。
+
+---
+
+## 13. 后续改进方向
+
+后续可以继续从以下方向改进：
+
+1. **替换更强的文本编码器**
+   - 使用 BiLSTM、Transformer Encoder 或 BERT 类模型进行对比。
+
+2. **改进 tokenizer**
+   - 当前 word / phrase tokenizer 主要基于规则词表和最长匹配，可以尝试引入 jieba 或训练子词 tokenizer。
+
+3. **增强可解释性**
+   - 输出 gate 权重；
+   - 分析不同情绪样本中 char / word / phrase 分支的重要性。
+
+4. **改进数据集质量**
+   - 人工检查高置信错分样本；
+   - 清理疑似错标样本；
+   - 减少重复文本和模板化文本。
+
+5. **加入实验报告**
+   - 将 ablation 结果整理成表格；
+   - 对混淆矩阵进行文字分析；
+   - 对不同版本的模型效果进行复盘。
+
+6. **整理为科研展示版本**
+   - 补充项目动机；
+   - 补充模型结构图；
+   - 补充训练曲线；
+   - 补充错误分析案例；
+   - 形成一份完整的项目展示文档。
+
+---
+
+## 14. 一句话总结
+
+本项目从基础中文文本分类出发，逐步迭代为一个包含多粒度文本建模、三分支 TextCNN、门控融合、完整训练评估、数据质量审计和消融实验的中文微博情绪分类系统。
